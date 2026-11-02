@@ -1,4 +1,5 @@
 .workbuddy
+projects/
 # --- START: template .gitignore  ---
 # custom path
 output
