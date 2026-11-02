@@ -4,234 +4,335 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-import flet as ft
+import ui
 
 from models import Item
 from view.contexts import use_container
-from view.hooks import use_view_model
-from view.widgets.avatar import avatar_circle
-from viewmodel import ListPanelViewModel
+from view.design import (
+    AVATAR_LIST,
+    DIVIDER_GRAB,
+    FONT_BODY,
+    FONT_CAPTION,
+    FONT_HEADLINE,
+    FONT_SMALL,
+    FONT_SUBTITLE,
+    LG,
+    MD,
+    PIN_ICON,
+    SM,
+    UNREAD_DOT,
+    XS,
+    Palette,
+)
+from view.hooks import use_navigate, use_palette, use_view_model
+from view.widgets.avatar import avatar
+from view.widgets.fields import search_field
 
-_PINNED_BG = "#f0f5ff"
-"""置顶条目的淡底色。"""
+_MENU_ITEM_HEIGHT = 40
+_MENU_ICON = 18
 
 
-@ft.component
-def ListPanel():
+def _menu_item(
+    *,
+    label: str,
+    icon: ui.IconData,
+    on_click: Callable[[], None],
+    palette: Palette,
+    danger: bool = False,
+) -> ui.PopupMenuItem:
+    """菜单项：统一图标尺寸与行高，危险动作用危险色。"""
+    color = palette.danger if danger else palette.muted
+    return ui.PopupMenuItem(
+        content=ui.Text(
+            label,
+            size=FONT_BODY,
+            color=palette.danger if danger else palette.text,
+        ),
+        icon=ui.Icon(icon, size=_MENU_ICON, color=color),
+        height=_MENU_ITEM_HEIGHT,
+        on_click=lambda _: on_click(),
+    )
+
+
+def _row_menu(
+    item: Item,
+    on_action: Callable[[str, str], None],
+    palette: Palette,
+) -> list[ui.PopupMenuItem]:
+    """构建条目的右键菜单。
+
+    Args:
+        item: 目标条目。
+        on_action: 动作回调，接收 ``(动作名, 条目 ID)``。
+        palette: 当前色板。
+
+    Returns:
+        菜单项列表。
+    """
+    return [
+        _menu_item(
+            label="标记为未读",
+            icon=ui.Icons.MARK_AS_UNREAD,
+            palette=palette,
+            on_click=lambda: on_action("mark_unread", item.id),
+        ),
+        _menu_item(
+            label="取消置顶" if item.is_pinned else "置顶",
+            icon=ui.Icons.PUSH_PIN if item.is_pinned else ui.Icons.PUSH_PIN_OUTLINED,
+            palette=palette,
+            on_click=lambda: on_action("toggle_pin", item.id),
+        ),
+        ui.PopupMenuItem(
+            height=9,
+            padding=ui.Padding.symmetric(horizontal=0, vertical=4),
+            content=ui.Divider(height=1, thickness=1, color=palette.border),
+        ),
+        _menu_item(
+            label="隐藏",
+            icon=ui.Icons.HIDE_SOURCE_OUTLINED,
+            palette=palette,
+            on_click=lambda: on_action("hide", item.id),
+        ),
+        _menu_item(
+            label="删除",
+            icon=ui.Icons.DELETE_OUTLINED,
+            palette=palette,
+            danger=True,
+            on_click=lambda: on_action("delete", item.id),
+        ),
+    ]
+
+
+@ui.component
+def _list_row(
+    *,
+    item: Item,
+    selected: bool,
+    palette: Palette,
+    on_open: Callable[[], None],
+    on_action: Callable[[str, str], None],
+) -> ui.ContextMenu:
+    """单个列表条目：悬停高亮、选中竖条、未读圆点、置顶图钉、右键菜单。"""
+    hovered, set_hovered = ui.use_state(False)
+
+    if selected:
+        bgcolor = palette.accent_soft
+    elif hovered:
+        bgcolor = palette.hover
+    else:
+        bgcolor = None
+
+    meta: list[ui.Control] = []
+    if item.is_pinned:
+        meta.append(ui.Icon(ui.Icons.PUSH_PIN, size=PIN_ICON, color=palette.muted))
+    if item.time:
+        meta.append(
+            ui.Text(item.time, size=FONT_CAPTION, color=palette.muted, max_lines=1)
+        )
+
+    preview_meta: list[ui.Control] = [
+        ui.Text(
+            item.preview,
+            size=FONT_SMALL,
+            color=palette.accent if selected else palette.muted,
+            max_lines=1,
+            overflow=ui.TextOverflow.ELLIPSIS,
+            expand=True,
+        )
+    ]
+    if item.is_unread:
+        preview_meta.append(
+            ui.Container(
+                width=UNREAD_DOT,
+                height=UNREAD_DOT,
+                border_radius=UNREAD_DOT / 2,
+                bgcolor=palette.accent,
+            )
+        )
+
+    row = ui.Container(
+        bgcolor=bgcolor,
+        border=ui.Border.only(
+            left=ui.BorderSide(3, palette.accent if selected else ui.Colors.TRANSPARENT)
+        ),
+        padding=ui.Padding.only(left=10, right=14, top=10, bottom=10),
+        ink=True,
+        on_click=lambda _: on_open(),
+        on_hover=lambda event: set_hovered(event.data == "true"),
+        content=ui.Row(
+            [
+                avatar(item.name, item.color, AVATAR_LIST),
+                ui.Column(
+                    [
+                        ui.Row(
+                            [
+                                ui.Text(
+                                    item.name,
+                                    size=FONT_SUBTITLE,
+                                    weight=(
+                                        ui.FontWeight.W_600
+                                        if selected or item.is_unread
+                                        else ui.FontWeight.W_500
+                                    ),
+                                    color=palette.text,
+                                    max_lines=1,
+                                    overflow=ui.TextOverflow.ELLIPSIS,
+                                    expand=True,
+                                ),
+                                *meta,
+                            ],
+                            spacing=SM,
+                            vertical_alignment=ui.CrossAxisAlignment.CENTER,
+                        ),
+                        ui.Row(
+                            preview_meta,
+                            spacing=SM,
+                            vertical_alignment=ui.CrossAxisAlignment.CENTER,
+                        ),
+                    ],
+                    spacing=XS,
+                    expand=True,
+                ),
+            ],
+            spacing=MD,
+            vertical_alignment=ui.CrossAxisAlignment.CENTER,
+        ),
+    )
+
+    return ui.ContextMenu(
+        secondary_items=_row_menu(item, on_action, palette),
+        secondary_trigger=ui.ContextMenuTrigger.DOWN,
+        content=row,
+    )
+
+
+@ui.component
+def _resize_handle(
+    *,
+    palette: Palette,
+    on_drag: Callable[[ui.DragUpdateEvent], None],
+) -> ui.GestureDetector:
+    """列表与详情之间的拖拽分隔条。
+
+    只有 5px 宽的可点区域、本身透明，靠面板自身的 1px 描边作视觉分隔；
+    悬停时给出淡底，提示「这里可以拖」。
+    """
+    hovered, set_hovered = ui.use_state(False)
+    return ui.GestureDetector(
+        mouse_cursor=ui.MouseCursor.RESIZE_LEFT_RIGHT,
+        drag_interval=8,
+        on_horizontal_drag_update=on_drag,
+        content=ui.Container(
+            width=DIVIDER_GRAB,
+            bgcolor=palette.hover if hovered else ui.Colors.TRANSPARENT,
+            on_hover=lambda event: set_hovered(event.data == "true"),
+        ),
+    )
+
+
+@ui.component
+def ListPanel() -> ui.Row:
     """当前模块的条目列表。
 
     Returns:
-        列表面板容器。
+        列表面板容器（列表 + 可拖拽的宽度分隔条）。
     """
-    container = use_container()
-    theme = use_view_model(container.theme)
-    view_model = use_view_model(container.list_panel)
-    location = ft.use_route_location()
+    palette = use_palette()
+    view_model = use_view_model(use_container().list_panel)
+    navigate = use_navigate()
+    location = ui.use_route_location()
 
     def sync_route() -> None:
         """路由变化时重载列表，必要时跳到首个条目。"""
         target = view_model.sync_route(location)
         if target:
-            ft.context.page.navigate(target)
+            navigate(target)
 
-    ft.use_effect(sync_route, dependencies=[location])
+    ui.use_effect(sync_route, dependencies=[location])
 
-    colors = theme.colors
+    def activate(action: str, item_id: str) -> None:
+        """执行右键菜单动作，必要时跟随跳转。"""
+        target = view_model.activate(action, item_id)
+        if target:
+            navigate(target)
 
-    def navigate(route: str) -> None:
-        ft.context.page.navigate(route)
-
-    def select_item(item_id: str) -> Callable[[ft.ControlEvent], None]:
-        """生成条目的点击处理函数。"""
-
-        def handler(_: ft.ControlEvent) -> None:
-            navigate(view_model.item_route(item_id))
-
-        return handler
-
-    def run_action(action: str, item_id: str) -> Callable[[ft.ControlEvent], None]:
-        """生成右键菜单动作的处理函数。"""
-
-        def handler(_: ft.ControlEvent) -> None:
-            target = view_model.activate(action, item_id)
-            if target:
-                navigate(target)
-
-        return handler
-
-    def on_divider_drag(event: ft.DragUpdateEvent) -> None:
+    def resize(event: ui.DragUpdateEvent) -> None:
         """拖动分隔条调整列表宽度。"""
-        delta = event.local_delta.x if event.local_delta else 0
-        view_model.resize_by(delta)
+        if event.local_delta:
+            view_model.resize_by(event.local_delta.x)
 
-    def build_menu_items(item: Item) -> list[ft.PopupMenuItem]:
-        """构建条目的右键菜单。"""
-        return [
-            ft.PopupMenuItem(
-                content="标记为未读",
-                icon=ft.Icons.MARK_AS_UNREAD,
-                on_click=run_action("mark_unread", item.id),
-            ),
-            ft.PopupMenuItem(
-                content="取消置顶" if item.is_pinned else "置顶",
-                icon=(
-                    ft.Icons.PUSH_PIN if item.is_pinned else ft.Icons.PUSH_PIN_OUTLINED
-                ),
-                on_click=run_action("toggle_pin", item.id),
-            ),
-            ft.PopupMenuItem(),
-            ft.PopupMenuItem(
-                content="隐藏",
-                icon=ft.Icons.HIDE_SOURCE_OUTLINED,
-                on_click=run_action("hide", item.id),
-            ),
-            ft.PopupMenuItem(
-                content="删除",
-                icon=ft.Icons.DELETE_OUTLINED,
-                on_click=run_action("delete", item.id),
-            ),
-        ]
+    items = view_model.items
 
-    def build_list_item(item: Item) -> ft.ContextMenu:
-        """构建单个列表条目。"""
-        is_selected = view_model.is_selected(item.id)
-
-        row_content = ft.Row(
+    if items:
+        body: ui.Control = ui.ListView(
             [
-                avatar_circle(item.name, item.color, 44),
-                ft.Column(
-                    [
-                        ft.Row(
-                            [
-                                ft.Text(
-                                    item.name,
-                                    size=14,
-                                    weight=(
-                                        ft.FontWeight.W_600
-                                        if is_selected
-                                        else ft.FontWeight.W_500
-                                    ),
-                                    color=colors.text,
-                                    expand=True,
-                                    max_lines=1,
-                                    overflow=ft.TextOverflow.ELLIPSIS,
-                                ),
-                                ft.Text(item.time, size=11, color=colors.text_sec),
-                            ],
-                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                        ),
-                        ft.Text(
-                            item.preview,
-                            size=12,
-                            color=colors.accent if is_selected else colors.text_sec,
-                            max_lines=1,
-                            overflow=ft.TextOverflow.ELLIPSIS,
-                        ),
-                    ],
-                    spacing=4,
-                    expand=True,
-                ),
+                _list_row(
+                    item=item,
+                    selected=view_model.is_selected(item.id),
+                    palette=palette,
+                    on_open=lambda item_id=item.id: navigate(
+                        view_model.item_route(item_id)
+                    ),
+                    on_action=activate,
+                )
+                for item in items
             ],
-            spacing=12,
+            spacing=0,
+            padding=0,
+            expand=True,
         )
-
-        return ft.ContextMenu(
-            secondary_items=build_menu_items(item),
-            secondary_trigger=ft.ContextMenuTrigger.DOWN,
-            content=ft.Container(
-                bgcolor=(
-                    colors.accent_soft
-                    if is_selected
-                    else _PINNED_BG
-                    if item.is_pinned
-                    else None
-                ),
-                border=ft.Border.only(
-                    left=ft.BorderSide(
-                        3, colors.accent if is_selected else "transparent"
-                    )
-                ),
-                padding=ft.Padding.only(left=13, right=14, top=10, bottom=10),
-                ink=True,
-                on_click=select_item(item.id),
-                content=row_content,
+    else:
+        body = ui.Container(
+            expand=True,
+            alignment=ui.Alignment.CENTER,
+            content=ui.Text(
+                "没有匹配的条目" if view_model.query.strip() else "暂无内容",
+                size=FONT_SMALL,
+                color=palette.muted,
             ),
         )
 
-    return ft.Row(
+    return ui.Row(
         [
-            ft.Container(
+            ui.Container(
                 width=view_model.width,
-                bgcolor=colors.list_bg,
-                border=ft.Border.only(right=ft.BorderSide(1, colors.border)),
-                content=ft.Column(
+                bgcolor=palette.surface,
+                border=ui.Border.only(right=ui.BorderSide(1, palette.border)),
+                content=ui.Column(
                     [
-                        ft.Container(
-                            padding=ft.Padding.only(
-                                left=16, right=16, top=14, bottom=10
+                        ui.Container(
+                            padding=ui.Padding.only(
+                                left=LG, right=LG, top=LG - 2, bottom=10
                             ),
-                            content=ft.Column(
+                            content=ui.Column(
                                 [
-                                    ft.Text(
+                                    ui.Text(
                                         view_model.module_label,
-                                        size=18,
-                                        weight=ft.FontWeight.W_700,
-                                        color=colors.text,
+                                        size=FONT_HEADLINE,
+                                        weight=ui.FontWeight.W_700,
+                                        color=palette.text,
                                     ),
-                                    ft.TextField(
+                                    search_field(
+                                        palette,
                                         value=view_model.query,
-                                        on_change=lambda event: view_model.set_query(
-                                            event.control.value or ""
-                                        ),
-                                        hint_text="搜索",
-                                        prefix_icon=ft.Icons.SEARCH,
-                                        height=36,
-                                        text_size=13,
-                                        border_radius=8,
-                                        bgcolor=colors.search_bg,
-                                        border_color="transparent",
-                                        focused_border_color=colors.accent,
-                                        content_padding=ft.Padding.symmetric(
-                                            horizontal=4, vertical=2
-                                        ),
-                                        dense=True,
+                                        on_change=view_model.set_query,
+                                        hint="搜索",
                                     ),
                                 ],
                                 spacing=10,
                             ),
                         ),
-                        ft.Container(
-                            expand=True,
-                            content=ft.ListView(
-                                [build_list_item(item) for item in view_model.items],
-                                spacing=0,
-                                padding=0,
-                                expand=True,
-                            ),
-                        ),
+                        ui.Container(expand=True, content=body),
                     ],
                     spacing=0,
                     expand=True,
                 ),
             ),
-            ft.GestureDetector(
-                mouse_cursor=ft.MouseCursor.RESIZE_LEFT_RIGHT,
-                drag_interval=8,
-                on_horizontal_drag_update=on_divider_drag,
-                content=ft.Container(
-                    width=5,
-                    bgcolor="transparent",
-                    content=ft.Container(
-                        width=1,
-                        bgcolor=colors.border,
-                        margin=ft.Margin.symmetric(vertical=48),
-                    ),
-                ),
-            ),
+            _resize_handle(palette=palette, on_drag=resize),
         ],
         spacing=0,
-        vertical_alignment=ft.CrossAxisAlignment.STRETCH,
+        vertical_alignment=ui.CrossAxisAlignment.STRETCH,
     )
 
 
-__all__ = ["ListPanel", "ListPanelViewModel"]
+__all__ = ["ListPanel"]

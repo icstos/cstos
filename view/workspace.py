@@ -2,25 +2,28 @@
 
 from __future__ import annotations
 
-import flet as ft
+import ui
 
 from view.list_panel import ListPanel
 
 
-@ft.component
-def WorkspaceLayout():
+@ui.component
+def WorkspaceLayout() -> ui.Row:
     """左列表 / 右详情的双栏布局。
 
     Returns:
         工作区容器。
     """
-    outlet = ft.use_route_outlet()
-    return ft.Row(
+    outlet = ui.use_route_outlet()
+    return ui.Row(
         [
             ListPanel(),
-            ft.Container(content=outlet, expand=True),
+            ui.Container(content=outlet, expand=True),
         ],
         expand=True,
         spacing=0,
-        vertical_alignment=ft.CrossAxisAlignment.STRETCH,
+        vertical_alignment=ui.CrossAxisAlignment.STRETCH,
     )
+
+
+__all__ = ["WorkspaceLayout"]

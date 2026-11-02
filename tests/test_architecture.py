@@ -1,10 +1,10 @@
-"""架构约束测试：验证分层与依赖方向。
+"""架构约束测试：验证分层、依赖方向与「不直接依赖 Flet」。
 
-规则（来自需求）：
+规则：
     * 单向依赖 View -> ViewModel -> Service -> Infra；
     * 所有层可依赖 Models；
-    * 禁止跨层调用与反向依赖；
-    * ViewModel 不依赖任何 Flet UI 组件。
+    * 界面一律经 ``ui`` 组件库间接使用 Flet，**任何业务代码不得 import flet**；
+    * ViewModel 不依赖任何 UI 组件库。
 
 实现方式：静态解析各层的 import 语句，断言不存在违规依赖。
 """
@@ -12,7 +12,6 @@
 from __future__ import annotations
 
 import ast
-import sys
 from pathlib import Path
 
 import pytest
@@ -25,20 +24,32 @@ ALLOWED_IMPORTS: dict[str, frozenset[str]] = {
     "infra": frozenset({"models", "infra"}),
     "service": frozenset({"models", "infra", "service"}),
     "viewmodel": frozenset({"models", "service", "viewmodel"}),
-    "view": frozenset({"models", "viewmodel", "view"}),
+    "view": frozenset({"models", "viewmodel", "view", "ui"}),
 }
 
 # 组合根与入口可以引用任意层
 ROOT_MODULES: frozenset[str] = frozenset({"container", "main"})
 
-# 禁止出现在 viewmodel 中的外部库
-FORBIDDEN_IN_VIEWMODEL: frozenset[str] = frozenset({"flet"})
+# 界面技术栈：只有视图层可以用，且必须经 ui 组件库
+UI_PACKAGE = "ui"
+FORBIDDEN_UI_IMPORTS: frozenset[str] = frozenset({"flet"})
 
 LAYERS = tuple(ALLOWED_IMPORTS)
 
 
 def _python_files(package: str) -> list[Path]:
     return sorted((ROOT / package).rglob("*.py"))
+
+
+def _all_project_files() -> list[Path]:
+    """项目自身的全部 Python 文件（不含 vendored 的 projects/ 目录）。"""
+    files = [
+        path
+        for path in ROOT.rglob("*.py")
+        if "projects" not in path.relative_to(ROOT).parts
+        and "__pycache__" not in path.parts
+    ]
+    return sorted(files)
 
 
 def _imported_roots(path: Path) -> set[str]:
@@ -56,11 +67,6 @@ def _imported_roots(path: Path) -> set[str]:
     return roots
 
 
-def _stdlib_and_third_party() -> frozenset[str]:
-    """本项目的层名之外的包名视为标准库/第三方，不参与分层断言。"""
-    return frozenset(sys.stdlib_module_names)
-
-
 @pytest.mark.parametrize("layer", LAYERS)
 def test_layer_dependency_direction(layer: str) -> None:
     """每层只能依赖自身与更低层（或 models）。"""
@@ -76,14 +82,40 @@ def test_layer_dependency_direction(layer: str) -> None:
     assert not violations, "违反依赖方向:\n" + "\n".join(violations)
 
 
-def test_viewmodel_has_no_flet_dependency() -> None:
+def test_no_direct_flet_import_anywhere() -> None:
+    """界面必须经 ui 组件库使用，业务代码不得直接 import flet。
+
+    直接依赖会让「换 UI 技术栈」从一次适配退化成全项目搜索替换，
+    也让组件库的默认值、令牌与主题失效。
+    """
+    violations = [
+        str(path.relative_to(ROOT))
+        for path in _all_project_files()
+        if FORBIDDEN_UI_IMPORTS & _imported_roots(path)
+    ]
+    assert not violations, "以下文件直接导入了 flet，请改用 ui 组件库:\n" + "\n".join(
+        violations
+    )
+
+
+def test_viewmodel_has_no_ui_dependency() -> None:
     """视图模型层必须是纯 Python，不得触碰任何 UI 组件库。"""
     violations: list[str] = []
     for path in _python_files("viewmodel"):
-        forbidden = _imported_roots(path) & FORBIDDEN_IN_VIEWMODEL
+        forbidden = _imported_roots(path) & (FORBIDDEN_UI_IMPORTS | {UI_PACKAGE})
         if forbidden:
             violations.append(f"{path.relative_to(ROOT)} 导入了 {sorted(forbidden)}")
-    assert not violations, "视图模型层不得依赖 Flet:\n" + "\n".join(violations)
+    assert not violations, "视图模型层不得依赖 UI:\n" + "\n".join(violations)
+
+
+def test_only_view_layer_uses_ui_library() -> None:
+    """ui 组件库只允许出现在视图层（以及入口的组合根）。"""
+    offenders: list[str] = []
+    for layer in ("models", "infra", "service", "viewmodel"):
+        for path in _python_files(layer):
+            if UI_PACKAGE in _imported_roots(path):
+                offenders.append(str(path.relative_to(ROOT)))
+    assert not offenders, "仅视图层可使用 ui 组件库，违规文件:\n" + "\n".join(offenders)
 
 
 def test_service_does_not_import_concrete_infra() -> None:
@@ -112,7 +144,7 @@ def test_service_does_not_import_concrete_infra() -> None:
 def test_models_is_dependency_free() -> None:
     """模型层不得依赖任何其它业务层。"""
     violations: list[str] = []
-    consumers = {"infra", "service", "viewmodel", "view"}
+    consumers = {"infra", "service", "viewmodel", "view", "ui"}
     for path in _python_files("models"):
         for root in _imported_roots(path):
             if root in consumers:
@@ -120,11 +152,22 @@ def test_models_is_dependency_free() -> None:
     assert not violations, "模型层必须保持无依赖:\n" + "\n".join(violations)
 
 
-def test_view_layer_exists_and_is_only_layer_touching_flet() -> None:
-    """只有视图层（与入口）允许依赖 Flet。"""
-    offenders: list[str] = []
-    for layer in ("models", "infra", "service", "viewmodel"):
-        for path in _python_files(layer):
-            if "flet" in _imported_roots(path):
-                offenders.append(str(path.relative_to(ROOT)))
-    assert not offenders, "仅视图层可使用 Flet，违规文件:\n" + "\n".join(offenders)
+def test_view_layer_only_imports_ui_for_widgets() -> None:
+    """视图层只能经 ``import ui`` 使用组件库，不得引用其内部私有模块。
+
+    统一入口保证组件 API 变更只需在一处适配；同时避免视图绕过组件库
+    直接摸到 Flet 的底层实现。
+    """
+    violations: list[str] = []
+    for path in _python_files("view"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.ImportFrom)
+                and node.module
+                and node.module.split(".")[0] == UI_PACKAGE
+            ):
+                violations.append(
+                    f"{path.relative_to(ROOT)} 从 {node.module} 直接导入名字"
+                )
+    assert not violations, "视图层请统一使用 `import ui`:\n" + "\n".join(violations)

@@ -1,79 +1,103 @@
-"""标签页栏（嵌入标题栏使用）。"""
+"""标签页栏（嵌入标题栏使用）。
+
+标签采用「整条与标题栏同高、仅上圆角」的桌面形态：激活标签的底色与
+下方内容区连成一体，视觉上能直接读出「当前在哪一页」。
+"""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 
-import flet as ft
+import ui
 
-from models import ColorSettings
-from view.contexts import use_container
-from view.hooks import use_view_model
+from view.design import (
+    FONT_BODY,
+    RADIUS_MD,
+    SM,
+    TAB_CLOSE_SIZE,
+    TAB_HEIGHT,
+    Palette,
+)
+from view.hooks import use_palette
 from viewmodel import TabData
 
+_MAX_TITLE = 18
+"""标签标题的最大字符数，超出部分省略——标签不会因为名字长而撑爆标题栏。"""
 
-def _build_tab(
+
+def _shorten(title: str) -> str:
+    """截断过长的标题。"""
+    return title if len(title) <= _MAX_TITLE else f"{title[: _MAX_TITLE - 1]}…"
+
+
+@ui.component
+def _tab(
     tab: TabData,
-    is_active: bool,
+    *,
+    active: bool,
     on_select: Callable[[str], None],
     on_close: Callable[[str], None],
-    colors: ColorSettings,
-) -> ft.Container:
-    """构建单个标签。
+) -> ui.Container:
+    """单个标签：点击切换，右侧关闭。"""
+    palette: Palette = use_palette()
+    hovered, set_hovered = ui.use_state(False)
 
-    Args:
-        tab: 标签数据。
-        is_active: 是否为当前激活标签。
-        on_select: 选中回调，接收路由。
-        on_close: 关闭回调，接收路由。
-        colors: 当前配色。
+    if active:
+        bgcolor = palette.canvas
+    else:
+        bgcolor = palette.bar_hover if hovered else None
 
-    Returns:
-        标签容器。
-    """
-    return ft.Container(
-        height=30,
-        bgcolor=colors.content_bg if is_active else "transparent",
-        border_radius=ft.BorderRadius.only(top_left=6, top_right=6),
-        padding=ft.Padding.only(left=12, right=4, top=2, bottom=2),
+    return ui.Container(
+        height=TAB_HEIGHT,
+        bgcolor=bgcolor,
+        border_radius=ui.BorderRadius.only(top_left=RADIUS_MD, top_right=RADIUS_MD),
+        border=(
+            ui.Border.only(top=ui.BorderSide(2, palette.accent)) if active else None
+        ),
+        padding=ui.Padding.only(left=12, right=6),
         ink=True,
         on_click=lambda _: on_select(tab.route),
-        content=ft.Row(
+        on_hover=lambda event: set_hovered(event.data == "true"),
+        content=ui.Row(
             [
-                ft.Text(
-                    tab.title,
-                    size=13,
-                    weight=ft.FontWeight.W_500 if is_active else ft.FontWeight.W_400,
-                    color=colors.text if is_active else colors.text_sec,
+                ui.Text(
+                    _shorten(tab.title),
+                    size=FONT_BODY,
+                    weight=ui.FontWeight.W_600 if active else ui.FontWeight.W_400,
+                    color=palette.accent if active else palette.bar_muted,
                     max_lines=1,
-                    overflow=ft.TextOverflow.ELLIPSIS,
                 ),
-                ft.Container(
-                    width=18,
-                    height=18,
-                    border_radius=4,
-                    alignment=ft.Alignment.CENTER,
+                ui.Container(
+                    width=TAB_CLOSE_SIZE,
+                    height=TAB_CLOSE_SIZE,
+                    border_radius=ui.RADIUS["sm"],
+                    alignment=ui.Alignment.CENTER,
                     ink=True,
+                    tooltip="关闭",
                     on_click=lambda _, route=tab.route: on_close(route),
-                    content=ft.Icon(
-                        ft.Icons.CLOSE, size=13, color=colors.text_sec
+                    content=ui.Icon(
+                        ui.Icons.CLOSE,
+                        size=13,
+                        color=palette.muted,
                     ),
                 ),
             ],
-            spacing=4,
+            spacing=SM,
             tight=True,
+            vertical_alignment=ui.CrossAxisAlignment.CENTER,
         ),
     )
 
 
-@ft.component
+@ui.component
 def TabBar(
+    *,
     tabs: tuple[TabData, ...],
     active_route: str,
     on_select: Callable[[str], None],
     on_close: Callable[[str], None],
-):
-    """水平排列全部标签，末尾留出窗口拖动区。
+) -> ui.Control:
+    """水平排列全部标签，末尾留出拖动区。
 
     Args:
         tabs: 标签集合。
@@ -84,20 +108,26 @@ def TabBar(
     Returns:
         标签栏控件。
     """
-    theme = use_view_model(use_container().theme)
-
     if not tabs:
-        return ft.Container(expand=True)
+        return ui.Container(expand=True)
 
-    return ft.Row(
+    return ui.Row(
         [
             *(
-                _build_tab(tab, tab.route == active_route, on_select, on_close, theme.colors)
+                _tab(
+                    tab,
+                    active=tab.route == active_route,
+                    on_select=on_select,
+                    on_close=on_close,
+                )
                 for tab in tabs
             ),
-            ft.Container(expand=True),
+            ui.Container(expand=True),
         ],
         spacing=2,
-        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-        scroll=ft.ScrollMode.AUTO,
+        vertical_alignment=ui.CrossAxisAlignment.CENTER,
+        scroll=ui.ScrollMode.AUTO,
     )
+
+
+__all__ = ["TabBar"]

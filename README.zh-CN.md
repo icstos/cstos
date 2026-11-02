@@ -1,6 +1,6 @@
 # CSTOS
 
-企业协作桌面应用，基于 Flet 框架构建，提供聊天、通讯录、邮箱等功能模块。
+企业协作桌面应用，基于本地 UI 库 **cs-ui**（封装 Flet 1.x 的声明式组件库）构建，提供聊天、通讯录、邮箱等功能模块。
 
 ## 功能特性
 
@@ -13,7 +13,8 @@
 
 ## 技术栈
 
-- **UI 框架**：[Flet](https://flet.dev/) >= 1.0.5, < 2
+- **UI 库**：[cs-ui](projects/cs-ui) >= 0.1.1（本地包，底层 Flet >= 1.0.5, < 2）
+- **Flet 用法约束**：业务代码只 `import ui`，全项目不出现 `import flet`
 - **数据库**：SQLite + [SQLModel](https://sqlmodel.tiangolo.com/) >= 0.0.22
 - **配置管理**：TOML 配置文件 + dataclass 类型化加载
 - **Python 版本**：>= 3.12
@@ -29,8 +30,8 @@
 | `models` | 实体、枚举、常量、路由值对象、响应式原语。无业务逻辑、无 IO。 | `models` |
 | `infra` | 封装底层技术（TOML / SQLite / JSON / 哈希），并通过 `infra/protocols.py` 中的 `Protocol` 暴露抽象接口。 | `models`、`infra` |
 | `service` | 编排业务流程，只针对抽象接口编程。 | `models`、`infra.protocols`、`service` |
-| `viewmodel` | 纯 Python 的界面状态；调用业务服务并通知订阅者。**零 Flet 依赖。** | `models`、`service`、`viewmodel` |
-| `view` | 声明式 Flet 组件：渲染状态、分发事件，无业务逻辑。 | `models`、`viewmodel`、`view` |
+| `viewmodel` | 纯 Python 的界面状态；调用业务服务并通知订阅者。**零 UI 依赖。** | `models`、`service`、`viewmodel` |
+| `view` | 声明式 `ui` 组件：渲染状态、分发事件，无业务逻辑。 | `models`、`viewmodel`、`view`、`ui` |
 
 界面完全是状态的纯函数（`UI = f(state)`）。视图模型继承 `Observable`，
 `view/hooks.py::use_view_model` 把组件订阅到视图模型，状态一变即重渲染。
@@ -68,7 +69,6 @@ cs-ui-template/
 │   ├── base.py              # ViewModel 基类 + RouteTarget 约定
 │   ├── theme.py             # ThemeState（全局响应式配色）
 │   ├── shell.py             # 标签页 + 登录守卫
-│   ├── title_bar.py         # 最大化标记、悬停按钮
 │   ├── nav_rail.py          # 模块列表、当前用户、激活模块
 │   ├── list_panel.py        # 条目、搜索词、宽度、右键菜单动作
 │   ├── chat_detail.py       # 消息与草稿
@@ -76,10 +76,12 @@ cs-ui-template/
 │   ├── search_overlay.py    # 开关、关键词、结果
 │   ├── settings.py          # 可编辑配色、保存 / 恢复 / 登出
 │   └── auth.py              # 登录 / 注册 / 改密表单
-├── view/                    # 第 5 层：声明式 Flet 组件
-│   ├── hooks.py             # use_view_model：唯一的状态→渲染桥接
+├── view/                    # 第 5 层：声明式 ui 组件
+│   ├── design.py            # 视觉基线：几何令牌 + 语义色板 Palette
+│   ├── hooks.py             # use_view_model / use_palette：状态→渲染桥接
 │   ├── contexts.py          # 容器注入
 │   ├── app.py               # 根视图 + 路由树
+│   ├── window.py            # 窗口配置 + use_window() + 窗口按钮组
 │   ├── shell.py             # 标题栏 + 导航栏 + 内容区 + 搜索
 │   ├── title_bar.py         # 自有标题栏（无边框窗口）
 │   ├── tab_bar.py           # 标签条
@@ -92,11 +94,11 @@ cs-ui-template/
 │   ├── settings.py          # 设置页
 │   ├── auth.py              # 登录 / 注册 / 改密视图
 │   ├── icons.py             # 图标名解析
-│   └── widgets/             # 纯展示控件（头像、详情面板）
+│   └── widgets/             # 纯展示控件（头像、按钮、字段、详情面板）
 ├── tests/                   # 自动化测试
 │   ├── test_architecture.py # 强制校验上述分层规则
 │   ├── test_viewmodel.py    # 业务行为，无需启动 UI
-│   ├── test_flet_smoke.py   # 离线渲染全部组件
+│   ├── test_view_smoke.py   # 离线渲染全部组件
 │   └── manual/              # 真机窗口验证脚本
 ├── container.py             # 组合根
 ├── main.py                  # 应用入口
@@ -115,7 +117,8 @@ pip install -e .
 ### 方式二：使用依赖文件
 
 ```bash
-pip install "flet>=1.0.5,<2" "sqlmodel>=0.0.22"
+pip install -e projects/cs-ui    # 本地 UI 库（可编辑安装）
+pip install sqlmodel>=0.0.22
 ```
 
 ## 运行

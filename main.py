@@ -1,67 +1,56 @@
 """CSTOS 应用入口。
 
 职责仅有两项：
-    1. 通过组合根装配依赖（:func:`container.build_container`）；
-    2. 把根视图交付给 Flet 运行时。
 
-界面完全由状态派生，因此 ``build_app`` 只需一行 ``page.render``。
+1. 通过组合根装配依赖（:func:`container.build_container`）；
+2. 把窗口 / 主题配置下发到页面，再把根视图交给运行时。
+
+界面完全由状态派生，因此 ``start`` 只有一次 ``page.render``。
 """
 
 from __future__ import annotations
 
-import flet as ft
+import ui
 
 from container import AppContainer, build_container
-from models import FONT_ASSET_PATH, FONT_FAMILY, WindowSettings
+from models import FONT_ASSET_PATH, FONT_FAMILY
 from view.app import RootWithContainer
+from view.window import apply_window_settings
 
 
-def apply_window_settings(
-    page: ft.Page, window: WindowSettings, content_bg: str
-) -> None:
-    """把窗口配置应用到页面。
-
-    Flet 1.x 中 ``page.padding`` / ``page.spacing`` / ``page.bgcolor``
-    已不是 ``Page`` 的属性，直接赋值不会报错但也不会生效；
-    页面背景由根视图的容器承载，窗口背景则由 ``window.bgcolor`` 承担。
+def configure_page(page: ui.Page, container: AppContainer) -> None:
+    """把字体、窗口与主题配置下发到页面。
 
     Args:
-        page: Flet 页面。
-        window: 窗口配置。
-        content_bg: 内容区背景色（同时作为窗口底色，避免拖动时露白）。
+        page: 页面对象。
+        container: 已装配好的应用容器。
     """
-    page.title = window.title
-    page.fonts = {FONT_FAMILY: FONT_ASSET_PATH}
-    page.theme = ft.Theme(font_family=FONT_FAMILY)
-    page.padding = ft.Padding.all(0)
-    page.window.width = window.width
-    page.window.height = window.height
-    page.window.min_width = window.min_width
-    page.window.min_height = window.min_height
-    page.window.bgcolor = content_bg
+    settings = container.settings_service
+    window = settings.window()
+    colors = settings.colors()
 
-    if window.frameless:
-        page.window.frameless = True
-        page.window.title_bar_hidden = True
+    page.fonts = {FONT_FAMILY: FONT_ASSET_PATH}
+    apply_window_settings(page, window, bgcolor=colors.content_bg)
+
+    # Material 主题：主色种子取自用户配置的强调色，整套色板由它推导；
+    # 明暗固定为浅色——配色配置本身是一套浅色方案。
+    theme_state = ui.theme_state()
+    theme_state.font_family = FONT_FAMILY
+    theme_state.set_mode("light")
+    theme_state.set_primary(colors.accent)
 
 
 def main() -> None:
     """启动应用。"""
-    container: AppContainer = build_container()
+    container = build_container()
 
-    def setup_window(page: ft.Page) -> None:
-        apply_window_settings(
-            page,
-            container.settings_service.window(),
-            container.settings_service.colors().content_bg,
-        )
-
-    def build_app(page: ft.Page) -> None:
-        # @ft.component 组件不能直接调用：page.render 会建立渲染上下文；
+    def start(page: ui.Page) -> None:
+        configure_page(page, container)
+        # @ui.component 组件不能直接调用：page.render 会建立渲染上下文，
         # 且它接收的是组件函数本身，而非已实例化的控件。
         page.render(RootWithContainer, container)
 
-    ft.run(build_app, before_main=setup_window)
+    ui.run(start)
 
 
 if __name__ == "__main__":

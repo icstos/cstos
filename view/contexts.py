@@ -10,12 +10,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING, cast
 
-import flet as ft
+import ui
 
 if TYPE_CHECKING:
     from container import AppContainer
 
-_ContainerContext = ft.create_context(cast("AppContainer | None", None))
+_ContainerContext = ui.create_context(cast("AppContainer | None", None))
 
 
 def use_container() -> AppContainer:
@@ -27,7 +27,7 @@ def use_container() -> AppContainer:
     Raises:
         RuntimeError: 组件树未被 :func:`provide_container` 包裹时抛出。
     """
-    container = ft.use_context(_ContainerContext)
+    container = ui.use_context(_ContainerContext)
     if container is None:
         raise RuntimeError(
             "应用容器未注入：请确保根组件使用 provide_container() 包裹。"
@@ -46,3 +46,6 @@ def provide_container[T](container: AppContainer, build: Callable[[], T]) -> T:
         ``build`` 的返回值。
     """
     return _ContainerContext(container, build)
+
+
+__all__ = ["provide_container", "use_container"]

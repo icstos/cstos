@@ -69,9 +69,7 @@ class Item(SQLModel, table=True):
     is_hidden: bool = Field(default=False)
 
     module: Module | None = Relationship(back_populates="items")
-    messages: list["Message"] = Relationship(
-        back_populates="item", cascade_delete=True
-    )
+    messages: list["Message"] = Relationship(back_populates="item", cascade_delete=True)
 
 
 class Message(SQLModel, table=True):

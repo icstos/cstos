@@ -112,7 +112,9 @@ class TestAuth:
 class TestListPanel:
     @pytest.fixture
     def vm(self, container) -> ListPanelViewModel:
-        return ListPanelViewModel(container.workspace_service, container.settings_service)
+        return ListPanelViewModel(
+            container.workspace_service, container.settings_service
+        )
 
     def test_sync_route_loads_items_and_redirects(self, vm) -> None:
         target = vm.sync_route("/chat")

@@ -22,9 +22,7 @@ class ListPanelViewModel(ViewModel):
         settings: 设置业务服务（读取列表宽度上下限）。
     """
 
-    def __init__(
-        self, workspace: WorkspaceService, settings: SettingsService
-    ) -> None:
+    def __init__(self, workspace: WorkspaceService, settings: SettingsService) -> None:
         super().__init__()
         self._workspace = workspace
         self._settings = settings

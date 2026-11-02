@@ -55,9 +55,7 @@ class ChatDetailViewModel(ViewModel):
 
         self._item_id = item_id
         self._item = self._workspace.get_item(item_id)
-        self._messages = (
-            self._workspace.list_messages(item_id) if self._item else []
-        )
+        self._messages = self._workspace.list_messages(item_id) if self._item else []
         self._draft = ""
         self.notify()
 

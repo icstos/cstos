@@ -25,7 +25,9 @@ WINDOW_TITLE = "CSTOS"
 
 PROBE.mkdir(parents=True, exist_ok=True)
 
-_SKILL_SCRIPTS = Path.home() / ".workbuddy" / "skills" / "flet-desktop-ui-probe" / "scripts"
+_SKILL_SCRIPTS = (
+    Path.home() / ".workbuddy" / "skills" / "flet-desktop-ui-probe" / "scripts"
+)
 if str(_SKILL_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SKILL_SCRIPTS))
 

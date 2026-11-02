@@ -3,8 +3,15 @@
 
 ## 技术约束
 
-- **Flet `>=1.0.5,<2`**，Python `>=3.12`。用 `ft.Button`（不是 `ElevatedButton`）、
-  `ft.NoInputBorder()`（不是 `InputBorder.NONE`）。
+- **UI 库 cs-ui（`import ui`）**，底层 Flet `>=1.0.5,<2`，Python `>=3.12`。
+  业务代码**不出现 `import flet`**（测试会扫描全项目强制校验），需要用到
+  Flet 原生控件时从 `ui` 拿同名符号。用 `ui.Button`（不是 `ElevatedButton`）、
+  `ui.NoInputBorder()`（不是 `InputBorder.NONE`）。
+- **样式必须显式给全**：`ui.Button` 的 `bgcolor` / `side` / `shape` 都有预设，
+  自定义配色时要同时给 `bgcolor`、`overlay_color`、`side`、`shape`，
+  否则会出现「白底白字」这类预设色回写的问题。
+- 几何与配色只从 `view/design.py` 取（`SPACE`/`RADIUS`/`FONT_*`/`Palette`），
+  视图里不写魔法数字与裸色值。
 - `page.padding` / `page.spacing` / `page.bgcolor` 在 1.x 已不存在，
   赋值**不报错但不生效**；页面背景用根视图的 `Container`，
   窗口底色用 `page.window.bgcolor`。
@@ -20,8 +27,9 @@
 - `infra/` 通过 `infra/protocols.py` 暴露 `Protocol`；实现放在各 `*_store` /
   `*_repository` 模块。
 - `service/` **只**导入 `infra.protocols`，不得导入具体实现。
-- `viewmodel/` **零 Flet 依赖**，纯 Python 类，不操作 UI 组件。
-- `view/` 无业务逻辑，只渲染状态、分发事件。
+- `viewmodel/` **零 UI 依赖**，纯 Python 类，不操作 UI 组件。
+- `view/` 无业务逻辑，只渲染状态、分发事件；只允许 `from ui import ...`
+  形式的整包导入（禁止 `from ui.xxx import`，保持库内部结构调整时不波及业务）。
 - `container.py` 是唯一知道「接口→实现」映射的地方。
 - 校验命令：`pytest tests/test_architecture.py`。
 
@@ -31,7 +39,7 @@
   VM 状态变更 → `notify()` → 组件重渲染。禁止用 `importlib.reload` 或
   反复导航来强制刷新。
 - **导航**：VM 方法返回目标路由字符串（`RouteTarget`），由 View 执行
-  `ft.context.page.navigate(...)`。VM 内不得出现 `page.navigate`。
+  `use_navigate()` 返回的函数。VM 内不得出现 `page.navigate`。
 - **纯展示控件**放在 `view/widgets/`，配色等依赖由参数传入，不自行读状态。
 - 组件内的 Hook 调用必须在任何提前 `return` 之前。
 - 所有面向用户的文案统一使用中文。

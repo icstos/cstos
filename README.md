@@ -1,6 +1,6 @@
 # CSTOS
 
-Enterprise collaboration desktop application built with Flet, featuring chat, contacts, and email modules.
+Enterprise collaboration desktop application built on **cs-ui**, a local declarative UI library that wraps Flet 1.x. Ships chat, contacts, and email modules.
 
 ## Features
 
@@ -13,7 +13,8 @@ Enterprise collaboration desktop application built with Flet, featuring chat, co
 
 ## Tech Stack
 
-- **UI Framework**: [Flet](https://flet.dev/) >= 1.0.5, < 2
+- **UI library**: [cs-ui](projects/cs-ui) >= 0.1.1 (local package, built on Flet >= 1.0.5, < 2)
+- **Flet usage rule**: application code only does `import ui`; no `import flet` anywhere in the project
 - **Database**: SQLite + [SQLModel](https://sqlmodel.tiangolo.com/) >= 0.0.22
 - **Configuration**: TOML config file + dataclass typed loading
 - **Python Version**: >= 3.12
@@ -30,8 +31,8 @@ technology.
 | `models` | Entities, enums, constants, route value objects, reactive primitives. No business logic, no I/O. | `models` |
 | `infra` | Wraps technology (TOML, SQLite, JSON, hashing) behind `Protocol` interfaces defined in `infra/protocols.py`. | `models`, `infra` |
 | `service` | Orchestrates business use cases against those interfaces. | `models`, `infra.protocols`, `service` |
-| `viewmodel` | Pure-Python UI state. Calls services, notifies subscribers. **Zero Flet imports.** | `models`, `service`, `viewmodel` |
-| `view` | Declarative Flet components. Renders state, dispatches events. No business logic. | `models`, `viewmodel`, `view` |
+| `viewmodel` | Pure-Python UI state. Calls services, notifies subscribers. **Zero UI imports.** | `models`, `service`, `viewmodel` |
+| `view` | Declarative `ui` components. Renders state, dispatches events. No business logic. | `models`, `viewmodel`, `view`, `ui` |
 
 UI is a pure function of state (`UI = f(state)`). A `ViewModel` extends
 `Observable`; `view/hooks.py::use_view_model` subscribes a component to a
@@ -71,7 +72,6 @@ cs-ui-template/
 │   ├── base.py              # ViewModel + RouteTarget convention
 │   ├── theme.py             # ThemeState (global reactive palette)
 │   ├── shell.py             # Tabs + auth guard
-│   ├── title_bar.py         # Maximize flag, hovered button
 │   ├── nav_rail.py          # Modules, session, active module
 │   ├── list_panel.py        # Items, query, width, context-menu actions
 │   ├── chat_detail.py       # Messages + draft
@@ -79,10 +79,12 @@ cs-ui-template/
 │   ├── search_overlay.py    # Open flag, query, results
 │   ├── settings.py          # Editable colours, save / restore / logout
 │   └── auth.py              # Login / register / change-password forms
-├── view/                    # Layer 5 — declarative Flet components
-│   ├── hooks.py             # use_view_model: the only state->render bridge
+├── view/                    # Layer 5 — declarative ui components
+│   ├── design.py            # Visual baseline: geometry tokens + Palette
+│   ├── hooks.py             # use_view_model / use_palette: state->render bridge
 │   ├── contexts.py          # Container injection
 │   ├── app.py               # Root view + route tree
+│   ├── window.py            # Window setup + use_window() + window buttons
 │   ├── shell.py             # Title bar + nav rail + content + search
 │   ├── title_bar.py         # Custom frameless title bar
 │   ├── tab_bar.py           # Tab strip
@@ -95,11 +97,11 @@ cs-ui-template/
 │   ├── settings.py          # Settings page
 │   ├── auth.py              # Login / register / change-password views
 │   ├── icons.py             # Icon-name resolution
-│   └── widgets/             # Presentational-only widgets (avatar, detail panel)
+│   └── widgets/             # Presentational widgets (avatar, buttons, fields, detail panel)
 ├── tests/                   # Automated tests
 │   ├── test_architecture.py # Enforces the layering rules above
 │   ├── test_viewmodel.py    # Business behaviour, no UI required
-│   ├── test_flet_smoke.py   # Renders every component offline
+│   ├── test_view_smoke.py   # Renders every component offline
 │   └── manual/              # Real-window verification scripts
 ├── container.py             # Composition root
 ├── main.py                  # Entry point
@@ -118,7 +120,8 @@ pip install -e .
 ### Option 2: Manual dependency installation
 
 ```bash
-pip install flet>=0.85.0 sqlmodel>=0.0.22
+pip install -e projects/cs-ui   # local UI library (editable)
+pip install sqlmodel>=0.0.22
 ```
 
 ## Running

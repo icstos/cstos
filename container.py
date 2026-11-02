@@ -34,7 +34,6 @@ from viewmodel import (
     SettingsViewModel,
     ShellViewModel,
     ThemeState,
-    TitleBarViewModel,
 )
 
 
@@ -51,7 +50,6 @@ class AppContainer:
 
     theme: ThemeState
     shell: ShellViewModel
-    title_bar: TitleBarViewModel
     nav_rail: NavRailViewModel
     list_panel: ListPanelViewModel
     chat_detail: ChatDetailViewModel
@@ -99,7 +97,6 @@ def build_container(
         auth_service=auth_service,
         theme=theme,
         shell=ShellViewModel(workspace_service, auth_service),
-        title_bar=TitleBarViewModel(),
         nav_rail=NavRailViewModel(workspace_service, auth_service),
         list_panel=ListPanelViewModel(workspace_service, settings_service),
         chat_detail=ChatDetailViewModel(workspace_service),

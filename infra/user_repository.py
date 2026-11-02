@@ -25,9 +25,7 @@ class SqlUserRepository:
     def find_by_username(self, username: str) -> User | None:
         """按用户名查找用户。"""
         with self._database.session() as session:
-            return session.exec(
-                select(User).where(User.username == username)
-            ).first()
+            return session.exec(select(User).where(User.username == username)).first()
 
     def get(self, user_id: int) -> User | None:
         """按主键查找用户。"""

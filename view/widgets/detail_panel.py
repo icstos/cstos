@@ -1,92 +1,127 @@
 """详情面板骨架。
 
-头部（头像 + 标题 / 副标题 + 操作按钮）+ 内容主体。
-纯展示组件：配色由调用方传入，不自行读取状态。
+头部（头像 + 标题 / 副标题 + 操作）+ 内容主体。纯展示组件：
+配色由调用方传入，不自行读取状态。
 """
 
 from __future__ import annotations
 
-from typing import Any
+import ui
 
-import flet as ft
+from models import Item
+from view.design import (
+    AVATAR_DETAIL,
+    FONT_SMALL,
+    FONT_TITLE,
+    LIST_HEADER_HEIGHT,
+    MD,
+    SM,
+    Palette,
+)
+from view.widgets.avatar import avatar
 
-from models import ColorSettings, Item
-from view.widgets.avatar import avatar_circle
-
-HEADER_HEIGHT = 56
+HEADER_HEIGHT = LIST_HEADER_HEIGHT
 """头部栏高度。"""
 
 
 def detail_panel(
     item: Item,
     subtitle: str,
-    body: Any,
-    colors: ColorSettings,
-) -> ft.Container:
+    body: ui.Control,
+    palette: Palette,
+) -> ui.Container:
     """构建详情面板。
 
     Args:
         item: 条目数据。
         subtitle: 副标题文本。
         body: 内容主体控件。
-        colors: 当前配色。
+        palette: 当前色板。
 
     Returns:
         详情面板容器。
     """
-    header = ft.Container(
+    header = ui.Container(
         height=HEADER_HEIGHT,
-        bgcolor="#ffffff",
-        border=ft.Border.only(bottom=ft.BorderSide(1, colors.border)),
-        padding=ft.Padding.symmetric(horizontal=20),
-        content=ft.Row(
+        bgcolor=palette.surface,
+        border=ui.Border.only(bottom=ui.BorderSide(1, palette.border)),
+        padding=ui.Padding.symmetric(horizontal=ui.SPACE["5"], vertical=0),
+        content=ui.Row(
             [
-                avatar_circle(item.name, item.color, 36),
-                ft.Column(
+                avatar(item.name, item.color, AVATAR_DETAIL),
+                ui.Column(
                     [
-                        ft.Text(
+                        ui.Text(
                             item.name,
-                            size=15,
-                            weight=ft.FontWeight.W_600,
-                            color=colors.text,
+                            size=FONT_TITLE,
+                            weight=ui.FontWeight.W_600,
+                            color=palette.text,
+                            max_lines=1,
+                            overflow=ui.TextOverflow.ELLIPSIS,
                         ),
-                        ft.Text(subtitle, size=12, color=colors.text_sec),
+                        ui.Text(
+                            subtitle,
+                            size=FONT_SMALL,
+                            color=palette.muted,
+                            max_lines=1,
+                            overflow=ui.TextOverflow.ELLIPSIS,
+                        ),
                     ],
-                    spacing=2,
-                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=1,
+                    alignment=ui.MainAxisAlignment.CENTER,
+                    expand=True,
                 ),
-                ft.Container(expand=True),
-                ft.IconButton(
-                    ft.Icons.VIDEOCAM_OUTLINED,
+                ui.IconButton(
+                    icon=ui.Icons.VIDEOCAM_OUTLINED,
                     icon_size=20,
-                    icon_color=colors.text_sec,
+                    icon_color=palette.muted,
+                    tooltip="视频通话",
                 ),
-                ft.IconButton(
-                    ft.Icons.MORE_VERT, icon_size=20, icon_color=colors.text_sec
+                ui.IconButton(
+                    icon=ui.Icons.MORE_VERT,
+                    icon_size=20,
+                    icon_color=palette.muted,
+                    tooltip="更多",
                 ),
             ],
-            spacing=12,
-            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=SM,
+            vertical_alignment=ui.CrossAxisAlignment.CENTER,
         ),
     )
 
-    return ft.Container(
+    return ui.Container(
         expand=True,
-        bgcolor=colors.content_bg,
-        content=ft.Column([header, body], expand=True, spacing=0),
+        bgcolor=palette.canvas,
+        content=ui.Column([header, body], expand=True, spacing=0),
     )
 
 
-def empty_detail_panel(colors: ColorSettings) -> ft.Container:
+def empty_detail_panel(palette: Palette) -> ui.Container:
     """条目不存在时的占位面板。
 
     Args:
-        colors: 当前配色。
+        palette: 当前色板。
 
     Returns:
-        空白容器。
+        居中的空状态容器。
     """
-    return ft.Container(expand=True, bgcolor=colors.content_bg)
+    return ui.Container(
+        expand=True,
+        bgcolor=palette.canvas,
+        alignment=ui.Alignment.CENTER,
+        content=ui.Column(
+            [
+                ui.Icon(
+                    ui.Icons.FORUM_OUTLINED,
+                    size=44,
+                    color=ui.Colors.with_opacity(0.35, palette.muted),
+                ),
+                ui.Text("从左侧选择一个条目", size=FONT_SMALL, color=palette.muted),
+            ],
+            spacing=MD,
+            horizontal_alignment=ui.CrossAxisAlignment.CENTER,
+        ),
+    )
 
 
 __all__ = ["HEADER_HEIGHT", "detail_panel", "empty_detail_panel"]

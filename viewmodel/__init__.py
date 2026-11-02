@@ -20,7 +20,6 @@ from viewmodel.search_overlay import SearchOverlayViewModel
 from viewmodel.settings import SettingsViewModel
 from viewmodel.shell import ShellViewModel, TabData
 from viewmodel.theme import ThemeState
-from viewmodel.title_bar import TitleBarViewModel
 
 __all__ = [
     "ChangePasswordViewModel",
@@ -36,6 +35,5 @@ __all__ = [
     "ShellViewModel",
     "TabData",
     "ThemeState",
-    "TitleBarViewModel",
     "ViewModel",
 ]

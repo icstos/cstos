@@ -1,14 +1,16 @@
-"""圆形头像控件。
+"""圆形文字头像。
 
-纯展示组件：不读取任何状态，全部输入经由参数传入。
+纯展示控件：不读取任何状态，全部输入经由参数传入。
 """
 
 from __future__ import annotations
 
-import flet as ft
+import ui
+
+from view.design import AVATAR_LIST, readable_on
 
 
-def avatar_circle(name: str, color: str, size: int = 40) -> ft.Container:
+def avatar(name: str, color: str, size: int = AVATAR_LIST) -> ui.Container:
     """构建圆形文字头像。
 
     Args:
@@ -19,17 +21,20 @@ def avatar_circle(name: str, color: str, size: int = 40) -> ft.Container:
     Returns:
         圆形头像容器。
     """
-    initial = name[0] if name else "?"
-    return ft.Container(
+    initial = name[:1] if name else "?"
+    return ui.Container(
         width=size,
         height=size,
-        border_radius=size // 2,
+        border_radius=size / 2,
         bgcolor=color,
-        alignment=ft.Alignment.CENTER,
-        content=ft.Text(
+        alignment=ui.Alignment.CENTER,
+        content=ui.Text(
             initial,
-            size=size // 2.2,
-            weight=ft.FontWeight.W_600,
-            color="#ffffff",
+            size=round(size * 0.42),
+            weight=ui.FontWeight.W_600,
+            color=readable_on(color),
         ),
     )
+
+
+__all__ = ["avatar"]

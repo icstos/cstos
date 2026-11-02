@@ -71,9 +71,7 @@ class WorkspaceService:
         content = text.strip()
         if not content:
             return None
-        return self._repository.add_message(
-            item_id, MessageRole.ME, content
-        )
+        return self._repository.add_message(item_id, MessageRole.ME, content)
 
     def mark_unread(self, item_id: str) -> None:
         """标记条目为未读。"""

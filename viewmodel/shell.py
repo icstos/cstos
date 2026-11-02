@@ -102,9 +102,7 @@ class ShellViewModel(ViewModel):
         Returns:
             需要跳转的目标路由；无需跳转返回 ``None``。
         """
-        index = next(
-            (i for i, tab in enumerate(self._tabs) if tab.route == route), -1
-        )
+        index = next((i for i, tab in enumerate(self._tabs) if tab.route == route), -1)
         if index < 0:
             return None
 
