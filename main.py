@@ -2,56 +2,30 @@
 
 职责仅有两项：
 
-1. 通过组合根装配依赖（:func:`container.build_container`）；
-2. 把窗口 / 主题配置下发到页面，再把根视图交给运行时。
+1. 为 src 布局做 ``sys.path`` 引导（打包态必需，见下）；
+2. 把控制权交给 :func:`cstos.bootstrap.run`。
 
-界面完全由状态派生，因此 ``start`` 只有一次 ``page.render``。
+界面完全由状态派生，装配与渲染细节在 ``cstos.bootstrap`` 中。
 """
 
 from __future__ import annotations
 
-import ui
+import sys
+from pathlib import Path
 
-from container import AppContainer, build_container
-from models import FONT_ASSET_PATH, FONT_FAMILY
-from view.app import RootWithContainer
-from view.window import apply_window_settings
+# src 布局必需：隔离打包环境（serious_python / PyInstaller 等）不会执行
+# pip install -e .，包被编译到 <app>/src/cstos/，而运行时 sys.path 只有
+# <app>/ 根、不含 src。这段同时覆盖开发态与打包态；删掉即打包后
+# ModuleNotFoundError。
+_ROOT = Path(__file__).resolve().parent
+_SRC = _ROOT / "src"
+if str(_SRC) not in sys.path and (_SRC / "cstos").exists():
+    sys.path.insert(0, str(_SRC))
 
+from cstos.bootstrap import configure_page, run  # noqa: E402
 
-def configure_page(page: ui.Page, container: AppContainer) -> None:
-    """把字体、窗口与主题配置下发到页面。
-
-    Args:
-        page: 页面对象。
-        container: 已装配好的应用容器。
-    """
-    settings = container.settings_service
-    window = settings.window()
-    colors = settings.colors()
-
-    page.fonts = {FONT_FAMILY: FONT_ASSET_PATH}
-    apply_window_settings(page, window, bgcolor=colors.content_bg)
-
-    # Material 主题：主色种子取自用户配置的强调色，整套色板由它推导；
-    # 明暗固定为浅色——配色配置本身是一套浅色方案。
-    theme_state = ui.theme_state()
-    theme_state.font_family = FONT_FAMILY
-    theme_state.set_mode("light")
-    theme_state.set_primary(colors.accent)
-
-
-def main() -> None:
-    """启动应用。"""
-    container = build_container()
-
-    def start(page: ui.Page) -> None:
-        configure_page(page, container)
-        # @ui.component 组件不能直接调用：page.render 会建立渲染上下文，
-        # 且它接收的是组件函数本身，而非已实例化的控件。
-        page.render(RootWithContainer, container)
-
-    ui.run(start)
-
+# 兼容历史调用方：原 ``main:main`` 控制台入口与 ``configure_page`` 旧位置。
+main = run
 
 if __name__ == "__main__":
-    main()
+    run()

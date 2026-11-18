@@ -30,7 +30,12 @@ if str(ROOT) not in sys.path:
 
 from ui import ft
 
-from view.design import Palette
+# flet 1.1.2 不会随 ``import flet`` 自动挂载这些子模块，需显式导入后
+# 才能以 ``ft.components.component`` / ``ft.controls.base_page`` 访问。
+import flet.components.component  # noqa: F401
+import flet.controls.base_page  # noqa: F401
+
+from cstos.view.design import Palette
 
 _Component = ft.components.component.Component
 _Renderer = ft.components.component.Renderer
@@ -99,7 +104,7 @@ def render(container, fn, *args: Any, **kwargs: Any) -> object:
     因此组件节点必须在「容器上下文已生效」之后创建，
     否则快照里没有容器，``use_container()`` 会拿到默认值。
     """
-    from view.contexts import provide_container
+    from cstos.view.contexts import provide_container
 
     impl = getattr(fn, "__component_impl__", fn)
     renderer = _Renderer()
@@ -130,19 +135,19 @@ def test_container_assembly(container) -> None:
 
 def test_all_components_render(container) -> None:
     """逐个渲染全部组件，任何异常都视为失败。"""
-    from view.app import App, IndexRedirect, RootView
-    from view.auth import ChangePasswordView, LoginView, RegisterView
-    from view.detail_chat import ChatDetail
-    from view.detail_generic import GenericDetail
-    from view.list_panel import ListPanel
-    from view.nav_rail import NavRail
-    from view.search_overlay import SearchOverlay
-    from view.settings import SettingsView
-    from view.shell import ShellLayout
-    from view.title_bar import TitleBar
-    from view.widgets.avatar import avatar
-    from view.widgets.detail_panel import detail_panel, empty_detail_panel
-    from view.workspace import WorkspaceLayout
+    from cstos.view.app import App, IndexRedirect, RootView
+    from cstos.view.auth import ChangePasswordView, LoginView, RegisterView
+    from cstos.view.detail_chat import ChatDetail
+    from cstos.view.detail_generic import GenericDetail
+    from cstos.view.list_panel import ListPanel
+    from cstos.view.nav_rail import NavRail
+    from cstos.view.search_overlay import SearchOverlay
+    from cstos.view.settings import SettingsView
+    from cstos.view.shell import ShellLayout
+    from cstos.view.title_bar import TitleBar
+    from cstos.view.widgets.avatar import avatar
+    from cstos.view.widgets.detail_panel import detail_panel, empty_detail_panel
+    from cstos.view.workspace import WorkspaceLayout
 
     # 准备工作区与详情状态，让组件有真实数据可渲染
     container.list_panel.sync_route("/chat/zhang")
@@ -198,8 +203,8 @@ def test_all_components_render(container) -> None:
 
 def test_title_bar_with_tabs(container) -> None:
     """有标签时标题栏可渲染（覆盖标签页非空分支）。"""
-    from view.title_bar import TitleBar
-    from viewmodel import LoginViewModel
+    from cstos.view.title_bar import TitleBar
+    from cstos.viewmodel import LoginViewModel
 
     login = LoginViewModel(container.auth_service, container.workspace_service)
     login.set_username("admin")
@@ -221,7 +226,7 @@ def test_title_bar_with_tabs(container) -> None:
 
 def test_search_overlay_with_results(container) -> None:
     """弹窗打开且有结果时可渲染（覆盖结果列表分支）。"""
-    from view.search_overlay import SearchOverlay
+    from cstos.view.search_overlay import SearchOverlay
 
     container.search_overlay.open()
     container.search_overlay.set_query("张三")
@@ -232,14 +237,14 @@ def test_search_overlay_with_results(container) -> None:
 
 def test_chat_detail_without_item_renders_placeholder(container) -> None:
     """条目不存在时渲染占位面板（覆盖空分支）。"""
-    from view.detail_chat import ChatDetail
+    from cstos.view.detail_chat import ChatDetail
 
     render(container, ChatDetail)
 
 
 def test_list_panel_empty_search_renders_hint(container) -> None:
     """搜索无结果时渲染空状态（覆盖空列表分支）。"""
-    from view.list_panel import ListPanel
+    from cstos.view.list_panel import ListPanel
 
     container.list_panel.sync_route("/chat/zhang")
     container.list_panel.set_query("绝不可能出现的关键词")

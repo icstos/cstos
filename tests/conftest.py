@@ -1,4 +1,4 @@
-"""pytest 公共装置：把项目根加入导入路径，并提供隔离的容器。"""
+"""pytest 公共装置：把 src 布局的源码根加入导入路径，并提供隔离的容器。"""
 
 from __future__ import annotations
 
@@ -8,6 +8,9 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -26,7 +29,7 @@ def container(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         f'[database]\nurl = "sqlite:///{db_path.as_posix()}"\n', encoding="utf-8"
     )
 
-    from container import build_container
+    from cstos.container import build_container
 
     return build_container(
         config_path=config_path,

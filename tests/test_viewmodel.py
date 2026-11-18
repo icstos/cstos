@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from infra.seed import DEFAULT_PASSWORD, DEFAULT_USERNAME
-from viewmodel import (
+from cstos.infra.seed import DEFAULT_PASSWORD, DEFAULT_USERNAME
+from cstos.viewmodel import (
     ChatDetailViewModel,
     ListPanelViewModel,
     LoginViewModel,

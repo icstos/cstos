@@ -17,8 +17,11 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
+SRC = ROOT / "src"
+PROJECT = "cstos"
+PKG_ROOT = SRC / PROJECT
 
-# 层 -> 允许直接导入的顶层包
+# 层 -> 允许直接导入的顶层包（一律为剥离 cstos. 前缀后的「有效根」）
 ALLOWED_IMPORTS: dict[str, frozenset[str]] = {
     "models": frozenset({"models"}),
     "infra": frozenset({"models", "infra"}),
@@ -28,7 +31,7 @@ ALLOWED_IMPORTS: dict[str, frozenset[str]] = {
 }
 
 # 组合根与入口可以引用任意层
-ROOT_MODULES: frozenset[str] = frozenset({"container", "main"})
+ROOT_MODULES: frozenset[str] = frozenset({"container", "main", "_paths", "bootstrap"})
 
 # 界面技术栈：只有视图层可以用，且必须经 ui 组件库
 UI_PACKAGE = "ui"
@@ -38,32 +41,44 @@ LAYERS = tuple(ALLOWED_IMPORTS)
 
 
 def _python_files(package: str) -> list[Path]:
-    return sorted((ROOT / package).rglob("*.py"))
+    return sorted((PKG_ROOT / package).rglob("*.py"))
 
 
 def _all_project_files() -> list[Path]:
     """项目自身的全部 Python 文件（不含 vendored 的 projects/ 目录）。"""
     files = [
         path
-        for path in ROOT.rglob("*.py")
-        if "projects" not in path.relative_to(ROOT).parts
-        and "__pycache__" not in path.parts
+        for path in SRC.rglob("*.py")
+        if "__pycache__" not in path.parts
     ]
+    files.append(ROOT / "main.py")
     return sorted(files)
 
 
+def _effective_root(name: str) -> str:
+    """剥离本项目的 ``cstos.`` 前缀，得到「有效根」包名。
+
+    第三方库（如 ``ui``、``flet``）原样返回。这样分层规则用简明的一级
+    包名表达，与 src 布局的物理层级解耦。
+    """
+    parts = name.split(".")
+    if parts[0] == PROJECT and len(parts) > 1:
+        return parts[1]
+    return parts[0]
+
+
 def _imported_roots(path: Path) -> set[str]:
-    """返回文件顶层 import 的第一个包名。"""
+    """返回文件顶层 import 的有效根包名。"""
     tree = ast.parse(path.read_text(encoding="utf-8"))
     roots: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            roots.update(alias.name.split(".")[0] for alias in node.names)
+            roots.update(_effective_root(alias.name) for alias in node.names)
         elif isinstance(node, ast.ImportFrom):
             if node.level:  # 相对导入，忽略
                 continue
             if node.module:
-                roots.add(node.module.split(".")[0])
+                roots.add(_effective_root(node.module))
     return roots
 
 
@@ -134,7 +149,9 @@ def test_service_does_not_import_concrete_infra() -> None:
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if isinstance(node, ast.ImportFrom) and node.module:
                 parts = node.module.split(".")
-                if parts[0] == "infra" and len(parts) > 1 and parts[1] in concrete:
+                if parts[0] == PROJECT:
+                    parts = parts[1:]
+                if parts and parts[0] == "infra" and len(parts) > 1 and parts[1] in concrete:
                     violations.append(
                         f"{path.relative_to(ROOT)} 导入了具体实现 {node.module}"
                     )

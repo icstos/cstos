@@ -39,74 +39,84 @@ UI is a pure function of state (`UI = f(state)`). A `ViewModel` extends
 view model, and any state change re-renders it. Theme changes therefore apply
 instantly without reload hacks.
 
-`container.py` is the composition root (the only place that knows which
-concrete implementation satisfies each interface) and `main.py` is the entry
+`src/cstos/container.py` is the composition root (the only place that knows which
+concrete implementation satisfies each interface) and root `main.py` is the entry (sys.path bootstrap delegating to `cstos.bootstrap.run`)
 point. Neither is part of the five layers.
 
 ## Project Structure
 
 ```
-cs-ui-template/
-├── models/                  # Layer 1 — data structures, no logic, no I/O
-│   ├── entities.py          # Module / Item / Message / User (SQLModel)
-│   ├── enums.py             # ModuleId, MessageRole
-│   ├── settings.py          # AppSettings and its four sections
-│   ├── route.py             # WorkspaceRoute value object
-│   ├── reactive.py          # Observable (state + notify)
-│   ├── session.py           # AuthSession value object
-│   └── constants.py         # Color presets, routes, font constants
-├── infra/                   # Layer 2 — technology behind protocols
-│   ├── protocols.py         # SettingsStore / SessionStore / repositories / hasher
-│   ├── config_store.py      # TOML read & write
-│   ├── database.py          # Engine, session, schema migration
-│   ├── seed.py              # Demo data + default account
-│   ├── workspace_repository.py
-│   ├── user_repository.py
-│   ├── auth_store.py        # Login-state JSON persistence
-│   └── password_hasher.py   # PBKDF2-HMAC-SHA256
-├── service/                 # Layer 3 — business use cases
-│   ├── auth_service.py      # Login / register / change password / logout
-│   ├── workspace_service.py # Modules, items, messages, search, pin, hide, delete
-│   └── settings_service.py  # Read / update / persist configuration
-├── viewmodel/               # Layer 4 — pure-Python UI state
-│   ├── base.py              # ViewModel + RouteTarget convention
-│   ├── theme.py             # ThemeState (global reactive palette)
-│   ├── shell.py             # Tabs + auth guard
-│   ├── nav_rail.py          # Modules, session, active module
-│   ├── list_panel.py        # Items, query, width, context-menu actions
-│   ├── chat_detail.py       # Messages + draft
-│   ├── generic_detail.py    # Detail body
-│   ├── search_overlay.py    # Open flag, query, results
-│   ├── settings.py          # Editable colours, save / restore / logout
-│   └── auth.py              # Login / register / change-password forms
-├── view/                    # Layer 5 — declarative ui components
-│   ├── design.py            # Visual baseline: geometry tokens + Palette
-│   ├── hooks.py             # use_view_model / use_palette: state->render bridge
-│   ├── contexts.py          # Container injection
-│   ├── app.py               # Root view + route tree
-│   ├── window.py            # Window setup + use_window() + window buttons
-│   ├── shell.py             # Title bar + nav rail + content + search
-│   ├── title_bar.py         # Custom frameless title bar
-│   ├── tab_bar.py           # Tab strip
-│   ├── nav_rail.py          # Side navigation rail
-│   ├── workspace.py         # List + detail two-column layout
-│   ├── list_panel.py        # List, search, context menu, drag resize
-│   ├── detail_chat.py       # Chat bubbles + composer
-│   ├── detail_generic.py    # Scrolling detail body
-│   ├── search_overlay.py    # Global search dialog
-│   ├── settings.py          # Settings page
-│   ├── auth.py              # Login / register / change-password views
-│   ├── icons.py             # Icon-name resolution
-│   └── widgets/             # Presentational widgets (avatar, buttons, fields, detail panel)
-├── tests/                   # Automated tests
-│   ├── test_architecture.py # Enforces the layering rules above
-│   ├── test_viewmodel.py    # Business behaviour, no UI required
-│   ├── test_view_smoke.py   # Renders every component offline
-│   └── manual/              # Real-window verification scripts
-├── container.py             # Composition root
-├── main.py                  # Entry point
-└── config.toml              # Configuration file
+cstos/
+├── src/
+│   └── cstos/
+│       ├── __init__.py
+│       ├── _paths.py            # 资源路径唯一出口
+│       ├── bootstrap.py         # 启动入口，暴露 run()
+│       ├── container.py         # 组合根
+│       ├── models/                  # 第 1 层：数据结构，无逻辑、无 IO
+│       │   ├── entities.py  # Module / Item / Message / User（SQLModel）
+│       │   ├── enums.py  # ModuleId、MessageRole
+│       │   ├── settings.py  # AppSettings 及四个配置节
+│       │   ├── route.py  # WorkspaceRoute 值对象
+│       │   ├── reactive.py  # Observable（状态 + 通知）
+│       │   ├── session.py  # AuthSession 值对象
+│       │   └── constants.py  # 预设色、路由、字体常量
+│       ├── infra/                  # 第 2 层：抽象接口背后的技术实现
+│       │   ├── protocols.py  # SettingsStore / SessionStore / 仓库 / 哈希器
+│       │   ├── config_store.py  # TOML 读写
+│       │   ├── database.py  # 引擎、会话、结构迁移
+│       │   ├── seed.py  # 演示数据 + 默认账号
+│       │   ├── workspace_repository.py
+│       │   ├── user_repository.py
+│       │   ├── auth_store.py  # 登录态 JSON 持久化
+│       │   └── password_hasher.py  # PBKDF2-HMAC-SHA256
+│       ├── service/                  # 第 3 层：业务用例
+│       │   ├── auth_service.py  # 登录 / 注册 / 改密 / 登出
+│       │   ├── workspace_service.py  # 模块、条目、消息、搜索、置顶、隐藏、删除
+│       │   └── settings_service.py  # 配置读取 / 更新 / 持久化
+│       ├── viewmodel/                  # 第 4 层：纯 Python 界面状态
+│       │   ├── base.py  # ViewModel 基类 + RouteTarget 约定
+│       │   ├── theme.py  # ThemeState（全局响应式配色）
+│       │   ├── shell.py  # 标签页 + 登录守卫
+│       │   ├── nav_rail.py  # 模块列表、当前用户、激活模块
+│       │   ├── list_panel.py  # 条目、搜索词、宽度、右键菜单动作
+│       │   ├── chat_detail.py  # 消息与草稿
+│       │   ├── generic_detail.py  # 详情正文
+│       │   ├── search_overlay.py  # 开关、关键词、结果
+│       │   ├── settings.py  # 可编辑配色、保存 / 恢复 / 登出
+│       │   └── auth.py  # 登录 / 注册 / 改密表单
+│       └── view/                  # 第 5 层：声明式 ui 组件
+│           ├── design.py  # 视觉基线：几何令牌 + 语义色板 Palette
+│           ├── hooks.py  # use_view_model / use_palette：状态→渲染桥接
+│           ├── contexts.py  # 容器注入
+│           ├── app.py  # 根视图 + 路由树
+│           ├── window.py  # 窗口配置 + use_window() + 窗口按钮组
+│           ├── shell.py  # 标题栏 + 导航栏 + 内容区 + 搜索
+│           ├── title_bar.py  # 自有标题栏（无边框窗口）
+│           ├── tab_bar.py  # 标签条
+│           ├── nav_rail.py  # 侧边导航栏
+│           ├── workspace.py  # 列表 + 详情双栏布局
+│           ├── list_panel.py  # 列表、搜索、右键菜单、拖动调宽
+│           ├── detail_chat.py  # 消息气泡 + 输入栏
+│           ├── detail_generic.py  # 可滚动详情正文
+│           ├── search_overlay.py  # 全局搜索弹窗
+│           ├── settings.py  # 设置页
+│           ├── auth.py  # 登录 / 注册 / 改密视图
+│           ├── icons.py  # 图标名解析
+│           └── widgets/  # 纯展示控件（头像、按钮、字段、详情面板）
+├── tests/                      # 自动化测试
+│   ├── test_architecture.py    # 强制校验上述分层规则
+│   ├── test_viewmodel.py       # 业务行为，无需启动 UI
+│   ├── test_view_smoke.py      # 离线渲染全部组件
+│   └── manual/                 # 真机窗口验证脚本
+├── main.py                     # 应用入口（sys.path 引导）
+└── config.toml                 # 配置文件
 ```
+
+The project uses a **src layout**: the five layers live under the top-level
+`cstos/` package and are imported as `cstos.models`, `cstos.view`, etc.
+`config.toml`, `assets/`, `data/` and `tests/` stay at the repository root;
+resource paths are resolved exclusively through `cstos._paths`.
 
 
 ## Installation
@@ -238,9 +248,9 @@ layering violation fails the suite instead of silently rotting.
 
 ### Adding a New Module
 
-1. Add a `Module` record in `infra/seed.py`
-2. Add the route in `view/app.py` and a view model in `viewmodel/`
-3. Register the view model in `container.py`
+1. Add a `Module` record in `src/cstos/infra/seed.py`
+2. Add the route in `src/cstos/view/app.py` and a view model in `src/cstos/viewmodel/`
+3. Register the view model in `src/cstos/container.py`
 
 ### Customizing Theme
 

@@ -28,82 +28,91 @@
 | 层级 | 职责 | 允许导入 |
 | --- | --- | --- |
 | `models` | 实体、枚举、常量、路由值对象、响应式原语。无业务逻辑、无 IO。 | `models` |
-| `infra` | 封装底层技术（TOML / SQLite / JSON / 哈希），并通过 `infra/protocols.py` 中的 `Protocol` 暴露抽象接口。 | `models`、`infra` |
+| `infra` | 封装底层技术（TOML / SQLite / JSON / 哈希），并通过 `cstos/infra/protocols.py` 中的 `Protocol` 暴露抽象接口。 | `models`、`infra` |
 | `service` | 编排业务流程，只针对抽象接口编程。 | `models`、`infra.protocols`、`service` |
 | `viewmodel` | 纯 Python 的界面状态；调用业务服务并通知订阅者。**零 UI 依赖。** | `models`、`service`、`viewmodel` |
 | `view` | 声明式 `ui` 组件：渲染状态、分发事件，无业务逻辑。 | `models`、`viewmodel`、`view`、`ui` |
 
 界面完全是状态的纯函数（`UI = f(state)`）。视图模型继承 `Observable`，
-`view/hooks.py::use_view_model` 把组件订阅到视图模型，状态一变即重渲染。
+`cstos/view/hooks.py::use_view_model` 把组件订阅到视图模型，状态一变即重渲染。
 因此换主题是即时生效的，不再需要重载模块或连续导航。
 
-`container.py` 是组合根（唯一知道「抽象接口对应哪个具体实现」的地方），
-`main.py` 是入口；两者都不属于五个层级。
+`src/cstos/container.py` 是组合根（唯一知道「抽象接口对应哪个具体实现」的地方），
+根目录 `main.py` 只做 sys.path 引导并转调 `cstos.bootstrap.run`；两者都不属于五个层级。
 
 ## 项目结构
 
 ```
-cs-ui-template/
-├── models/                  # 第 1 层：数据结构，无逻辑、无 IO
-│   ├── entities.py          # Module / Item / Message / User（SQLModel）
-│   ├── enums.py             # ModuleId、MessageRole
-│   ├── settings.py          # AppSettings 及四个配置节
-│   ├── route.py             # WorkspaceRoute 值对象
-│   ├── reactive.py          # Observable（状态 + 通知）
-│   ├── session.py           # AuthSession 值对象
-│   └── constants.py         # 预设色、路由、字体常量
-├── infra/                   # 第 2 层：抽象接口背后的技术实现
-│   ├── protocols.py         # SettingsStore / SessionStore / 仓库 / 哈希器
-│   ├── config_store.py      # TOML 读写
-│   ├── database.py          # 引擎、会话、结构迁移
-│   ├── seed.py              # 演示数据 + 默认账号
-│   ├── workspace_repository.py
-│   ├── user_repository.py
-│   ├── auth_store.py        # 登录态 JSON 持久化
-│   └── password_hasher.py   # PBKDF2-HMAC-SHA256
-├── service/                 # 第 3 层：业务用例
-│   ├── auth_service.py      # 登录 / 注册 / 改密 / 登出
-│   ├── workspace_service.py # 模块、条目、消息、搜索、置顶、隐藏、删除
-│   └── settings_service.py  # 配置读取 / 更新 / 持久化
-├── viewmodel/               # 第 4 层：纯 Python 界面状态
-│   ├── base.py              # ViewModel 基类 + RouteTarget 约定
-│   ├── theme.py             # ThemeState（全局响应式配色）
-│   ├── shell.py             # 标签页 + 登录守卫
-│   ├── nav_rail.py          # 模块列表、当前用户、激活模块
-│   ├── list_panel.py        # 条目、搜索词、宽度、右键菜单动作
-│   ├── chat_detail.py       # 消息与草稿
-│   ├── generic_detail.py    # 详情正文
-│   ├── search_overlay.py    # 开关、关键词、结果
-│   ├── settings.py          # 可编辑配色、保存 / 恢复 / 登出
-│   └── auth.py              # 登录 / 注册 / 改密表单
-├── view/                    # 第 5 层：声明式 ui 组件
-│   ├── design.py            # 视觉基线：几何令牌 + 语义色板 Palette
-│   ├── hooks.py             # use_view_model / use_palette：状态→渲染桥接
-│   ├── contexts.py          # 容器注入
-│   ├── app.py               # 根视图 + 路由树
-│   ├── window.py            # 窗口配置 + use_window() + 窗口按钮组
-│   ├── shell.py             # 标题栏 + 导航栏 + 内容区 + 搜索
-│   ├── title_bar.py         # 自有标题栏（无边框窗口）
-│   ├── tab_bar.py           # 标签条
-│   ├── nav_rail.py          # 侧边导航栏
-│   ├── workspace.py         # 列表 + 详情双栏布局
-│   ├── list_panel.py        # 列表、搜索、右键菜单、拖动调宽
-│   ├── detail_chat.py       # 消息气泡 + 输入栏
-│   ├── detail_generic.py    # 可滚动详情正文
-│   ├── search_overlay.py    # 全局搜索弹窗
-│   ├── settings.py          # 设置页
-│   ├── auth.py              # 登录 / 注册 / 改密视图
-│   ├── icons.py             # 图标名解析
-│   └── widgets/             # 纯展示控件（头像、按钮、字段、详情面板）
-├── tests/                   # 自动化测试
-│   ├── test_architecture.py # 强制校验上述分层规则
-│   ├── test_viewmodel.py    # 业务行为，无需启动 UI
-│   ├── test_view_smoke.py   # 离线渲染全部组件
-│   └── manual/              # 真机窗口验证脚本
-├── container.py             # 组合根
-├── main.py                  # 应用入口
-└── config.toml              # 配置文件
+cstos/
+├── src/
+│   └── cstos/
+│       ├── __init__.py
+│       ├── _paths.py            # 资源路径唯一出口
+│       ├── bootstrap.py         # 启动入口，暴露 run()
+│       ├── container.py         # 组合根
+│       ├── models/                  # 第 1 层：数据结构，无逻辑、无 IO
+│       │   ├── entities.py  # Module / Item / Message / User（SQLModel）
+│       │   ├── enums.py  # ModuleId、MessageRole
+│       │   ├── settings.py  # AppSettings 及四个配置节
+│       │   ├── route.py  # WorkspaceRoute 值对象
+│       │   ├── reactive.py  # Observable（状态 + 通知）
+│       │   ├── session.py  # AuthSession 值对象
+│       │   └── constants.py  # 预设色、路由、字体常量
+│       ├── infra/                  # 第 2 层：抽象接口背后的技术实现
+│       │   ├── protocols.py  # SettingsStore / SessionStore / 仓库 / 哈希器
+│       │   ├── config_store.py  # TOML 读写
+│       │   ├── database.py  # 引擎、会话、结构迁移
+│       │   ├── seed.py  # 演示数据 + 默认账号
+│       │   ├── workspace_repository.py
+│       │   ├── user_repository.py
+│       │   ├── auth_store.py  # 登录态 JSON 持久化
+│       │   └── password_hasher.py  # PBKDF2-HMAC-SHA256
+│       ├── service/                  # 第 3 层：业务用例
+│       │   ├── auth_service.py  # 登录 / 注册 / 改密 / 登出
+│       │   ├── workspace_service.py  # 模块、条目、消息、搜索、置顶、隐藏、删除
+│       │   └── settings_service.py  # 配置读取 / 更新 / 持久化
+│       ├── viewmodel/                  # 第 4 层：纯 Python 界面状态
+│       │   ├── base.py  # ViewModel 基类 + RouteTarget 约定
+│       │   ├── theme.py  # ThemeState（全局响应式配色）
+│       │   ├── shell.py  # 标签页 + 登录守卫
+│       │   ├── nav_rail.py  # 模块列表、当前用户、激活模块
+│       │   ├── list_panel.py  # 条目、搜索词、宽度、右键菜单动作
+│       │   ├── chat_detail.py  # 消息与草稿
+│       │   ├── generic_detail.py  # 详情正文
+│       │   ├── search_overlay.py  # 开关、关键词、结果
+│       │   ├── settings.py  # 可编辑配色、保存 / 恢复 / 登出
+│       │   └── auth.py  # 登录 / 注册 / 改密表单
+│       └── view/                  # 第 5 层：声明式 ui 组件
+│           ├── design.py  # 视觉基线：几何令牌 + 语义色板 Palette
+│           ├── hooks.py  # use_view_model / use_palette：状态→渲染桥接
+│           ├── contexts.py  # 容器注入
+│           ├── app.py  # 根视图 + 路由树
+│           ├── window.py  # 窗口配置 + use_window() + 窗口按钮组
+│           ├── shell.py  # 标题栏 + 导航栏 + 内容区 + 搜索
+│           ├── title_bar.py  # 自有标题栏（无边框窗口）
+│           ├── tab_bar.py  # 标签条
+│           ├── nav_rail.py  # 侧边导航栏
+│           ├── workspace.py  # 列表 + 详情双栏布局
+│           ├── list_panel.py  # 列表、搜索、右键菜单、拖动调宽
+│           ├── detail_chat.py  # 消息气泡 + 输入栏
+│           ├── detail_generic.py  # 可滚动详情正文
+│           ├── search_overlay.py  # 全局搜索弹窗
+│           ├── settings.py  # 设置页
+│           ├── auth.py  # 登录 / 注册 / 改密视图
+│           ├── icons.py  # 图标名解析
+│           └── widgets/  # 纯展示控件（头像、按钮、字段、详情面板）
+├── tests/                      # 自动化测试
+│   ├── test_architecture.py    # 强制校验上述分层规则
+│   ├── test_viewmodel.py       # 业务行为，无需启动 UI
+│   ├── test_view_smoke.py      # 离线渲染全部组件
+│   └── manual/                 # 真机窗口验证脚本
+├── main.py                     # 应用入口（sys.path 引导）
+└── config.toml                 # 配置文件
 ```
+
+项目采用 **src 布局**：五个业务层收在顶层包 `cstos/` 下，模块以
+`cstos.models`、`cstos.view` 等形式导入。`config.toml`、`assets/`、`data/`
+与 `tests/` 留在仓库根，不随包迁移；资源路径统一由 `cstos._paths` 解析。
 
 
 ## 安装
@@ -235,9 +244,9 @@ python tests/manual/theme_check.py   # 驱动一次真实换肤并验证全局�
 
 ### 添加新模块
 
-1. 在 `infra/seed.py` 中添加 `Module` 记录
-2. 在 `view/app.py` 中登记路由，并在 `viewmodel/` 中添加对应视图模型
-3. 在 `container.py` 中完成装配
+1. 在 `src/cstos/infra/seed.py` 中添加 `Module` 记录
+2. 在 `src/cstos/view/app.py` 中登记路由，并在 `src/cstos/viewmodel/` 中添加对应视图模型
+3. 在 `src/cstos/container.py` 中完成装配
 
 ### 自定义主题
 
