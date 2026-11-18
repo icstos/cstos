@@ -9,7 +9,7 @@ from view.contexts import use_container
 from view.design import (
     BUBBLE_RADIUS,
     COMPOSER_HEIGHT,
-    FONT_SUBTITLE,
+    FONT_BODY,
     LG,
     MD,
     RADIUS_MD,
@@ -41,7 +41,7 @@ def _bubble(message: Message, palette: Palette) -> ui.Control:
         padding=ui.Padding.symmetric(horizontal=14, vertical=10),
         content=ui.Text(
             message.text,
-            size=FONT_SUBTITLE,
+            size=FONT_BODY,
             color=palette.on_accent if mine else palette.text,
             selectable=True,
         ),

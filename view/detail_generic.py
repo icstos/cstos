@@ -5,7 +5,7 @@ from __future__ import annotations
 import ui
 
 from view.contexts import use_container
-from view.design import FONT_SUBTITLE, XXL
+from view.design import FONT_BODY, XXL
 from view.hooks import use_palette, use_view_model
 from view.widgets.detail_panel import detail_panel, empty_detail_panel
 
@@ -35,7 +35,7 @@ def GenericDetail() -> ui.Control:
             [
                 ui.Text(
                     view_model.body,
-                    size=FONT_SUBTITLE,
+                    size=FONT_BODY,
                     color=palette.text,
                     selectable=True,
                 )

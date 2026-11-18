@@ -15,7 +15,6 @@ from view.design import (
     FONT_CAPTION,
     FONT_HEADLINE,
     FONT_SMALL,
-    FONT_SUBTITLE,
     LG,
     MD,
     PIN_ICON,
@@ -168,7 +167,7 @@ def _list_row(
                             [
                                 ui.Text(
                                     item.name,
-                                    size=FONT_SUBTITLE,
+                                    size=FONT_BODY,
                                     weight=(
                                         ui.FontWeight.W_600
                                         if selected or item.is_unread

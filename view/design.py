@@ -35,11 +35,10 @@ RADIUS_LG = ui.RADIUS["lg"]
 RADIUS_XL = ui.RADIUS["xl"]
 RADIUS_FULL = ui.RADIUS["full"]
 
-# ── 字号 ───────────────────────────────────────────────────────
+# ── 字号（对齐 ui 字阶：body=14 是锚点，没有 subtitle 档）───────
 FONT_CAPTION = ui.FONT_SIZE["caption"]  # 11
 FONT_SMALL = ui.FONT_SIZE["small"]  # 12
-FONT_BODY = ui.FONT_SIZE["body"]  # 13
-FONT_SUBTITLE = ui.FONT_SIZE["subtitle"]  # 14
+FONT_BODY = ui.FONT_SIZE["body"]  # 14
 FONT_TITLE = ui.FONT_SIZE["title"]  # 16
 FONT_HEADLINE = ui.FONT_SIZE["headline"]  # 20
 
@@ -277,7 +276,6 @@ __all__ = [
     "FONT_CAPTION",
     "FONT_HEADLINE",
     "FONT_SMALL",
-    "FONT_SUBTITLE",
     "FONT_TITLE",
     "LG",
     "LIST_HEADER_HEIGHT",
