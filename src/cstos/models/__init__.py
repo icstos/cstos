@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from cstos.models.constants import (
     COLOR_PRESETS,
-    FONT_ASSET_PATH,
-    FONT_FAMILY,
     LOGIN_ROUTE,
     REGISTER_ROUTE,
     ROOT_ROUTE,
@@ -37,8 +35,6 @@ __all__ = [
     "COLOR_PRESETS",
     "DEFAULT_AVATAR_COLOR",
     "DEFAULT_MODULE_ID",
-    "FONT_ASSET_PATH",
-    "FONT_FAMILY",
     "LOGIN_ROUTE",
     "REGISTER_ROUTE",
     "ROOT_ROUTE",

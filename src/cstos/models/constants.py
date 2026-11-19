@@ -22,9 +22,3 @@ LOGIN_ROUTE = "/login"
 REGISTER_ROUTE = "/register"
 ROOT_ROUTE = "/"
 """认证与根路由。"""
-
-FONT_FAMILY = "AlibabaPuHuiTi"
-"""全局字族名（需与字体注册键一致）。"""
-
-FONT_ASSET_PATH = "assets/fonts/AlibabaPuHuiTi-3-55-Regular.otf"
-"""字体资源路径。"""

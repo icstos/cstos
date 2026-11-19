@@ -57,7 +57,7 @@ cstos/
 │       │   ├── route.py  # WorkspaceRoute 值对象
 │       │   ├── reactive.py  # Observable（状态 + 通知）
 │       │   ├── session.py  # AuthSession 值对象
-│       │   └── constants.py  # 预设色、路由、字体常量
+│       │   └── constants.py  # 预设色、路由常量
 │       ├── infra/                  # 第 2 层：抽象接口背后的技术实现
 │       │   ├── protocols.py  # SettingsStore / SessionStore / 仓库 / 哈希器
 │       │   ├── config_store.py  # TOML 读写
